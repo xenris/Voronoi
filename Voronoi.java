@@ -7,23 +7,19 @@ public class Voronoi {
         final KdTree kdTree = new KdTree();
 
         for(Point point : points) {
-            Log.debug("point: " + point);
             Cell parent = kdTree.getClosest(point);
 
             if(parent == null) {
                 kdTree.add(new Cell(point, bounds));
             } else {
                 final Cell cell = new Cell(point);
-                final List<Cell> neighbours = parent.getNeighbours(cell);
-                boolean success = true; // XXX Temporary mitigation to a bug in split().
+                final Set<Cell> neighbours = parent.getNeighbours(cell);
 
                 for(Cell neighbour : neighbours) {
-                    success = success && neighbour.split(cell);
+                    neighbour.split(cell);
                 }
 
-                if(success) {
-                    kdTree.add(cell);
-                }
+                kdTree.add(cell);
             }
 
             if(Main.counter >= Main.steps) {

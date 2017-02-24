@@ -22,7 +22,7 @@ public class Cell {
         edges.add(new Edge(r, b, l, b, this, null));
     }
 
-    public boolean split(Cell child) {
+    public void split(Cell child) {
         Log.debug("split");
         final Iterator<Edge> iterator = edges.iterator();
         final Ray ray = new Ray(center, child.center);
@@ -90,68 +90,24 @@ public class Cell {
 
             edges.add(e);
             child.edges.add(e);
-
         } else {
             Log.error("Found " + intersections.size() + " intersections while spliting");
-
-            return false;
         }
-
-        return true;
     }
 
-    public List<Cell> getNeighbours(Cell child) {
+    public Set<Cell> getNeighbours(Cell child) {
         Log.debug("getNeighbours(Cell)");
-        final List<Cell> neighbours = new ArrayList<>();
 
-        final Ray ray = new Ray(child.center, center);
-
-        final int sideOfParent = ray.side(center);
-        final int sideOfChild = -sideOfParent;
-
-        Log.debug("edge count: " + edges.size());
-
-        for(Edge edge : edges) {
-            Log.debug("edge: " + edge);
-            final int sideOfEdgeEndA = ray.side(edge.ends[0], edge.ends[1]);
-            final int sideOfEdgeEndB = ray.side(edge.ends[2], edge.ends[3]);
-
-            final boolean edgeCrossesRay = ((sideOfEdgeEndA + sideOfEdgeEndB) == 0) && (sideOfEdgeEndA != 0);
-            final boolean edgeTouchesRayOnChildSide = (sideOfEdgeEndA + sideOfEdgeEndB) == sideOfChild;
-
-            if(edgeCrossesRay || edgeTouchesRayOnChildSide) {
-                Log.debug("edgeCrossesRay || edgeTouchesRayOnChildSide");
-                final Cell neighbour = (edge.cells[0] == this) ? edge.cells[1] : edge.cells[0];
-
-                if(neighbour != null) {
-                    neighbours.add(neighbour);
-                }
-            }
-        }
+        final Set<Cell> neighbours = new HashSet<>();
 
         neighbours.add(this);
 
-        final int length = neighbours.size();
-        Log.debug("neighbour count: " + length);
-
-        // +1 for self
-        if(length > 3) {
-            throw new RuntimeException("Found more than 2 neighbours");
-        }
-
-        for(int i = 0; i < length; i++) {
-            final Cell neighbour = neighbours.get(i);
-
-            if(neighbour != this) {
-                neighbour.getNeighbours(child, neighbours);
-            }
-        }
+        getNeighbours(child, neighbours);
 
         return neighbours;
     }
 
-    private void getNeighbours(Cell child, List<Cell> neighbours) {
-        Log.debug("getNeighbours(Cell, List<Cell>)");
+    private void getNeighbours(Cell child, Set<Cell> neighbours) {
         final Ray ray = new Ray(child.center, center);
 
         final int sideOfParent = ray.side(center);
@@ -164,15 +120,14 @@ public class Cell {
 
             final boolean edgeCrossesRay = ((sideOfEdgeEndA + sideOfEdgeEndB) == 0) && (sideOfEdgeEndA != 0);
             final boolean edgeTouchesRayOnChildSide = (sideOfEdgeEndA + sideOfEdgeEndB) == sideOfChild;
+            final boolean edgeOnChildSide = (sideOfEdgeEndA == sideOfEdgeEndB) && (sideOfEdgeEndB == sideOfChild);
 
-            if(edgeCrossesRay || edgeTouchesRayOnChildSide) {
-                Log.debug("edgeCrossesRay || edgeTouchesRayOnChildSide");
+            if(edgeCrossesRay || edgeTouchesRayOnChildSide || edgeOnChildSide) {
+                Log.debug("edgeCrossesRay || edgeTouchesRayOnChildSide || edgeOnChildSide");
                 final Cell neighbour = (edge.cells[0] == this) ? edge.cells[1] : edge.cells[0];
 
-                if((neighbour != null) && !neighbours.contains(neighbour)) {
-                    neighbours.add(neighbour);
+                if((neighbour != null) && neighbours.add(neighbour)) {
                     neighbour.getNeighbours(child, neighbours);
-                    break;
                 }
             }
         }
