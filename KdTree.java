@@ -4,6 +4,37 @@ public class KdTree {
     private Node root = null;
     private final List<Cell> cells = new ArrayList<>();
 
+    static {
+        final KdTree tree = new KdTree();
+        final List<Cell> cells = new ArrayList<>();
+        final Random random = new Random();
+
+        for(int i = 0; i < 100; i++) {
+            final Cell cell = new Cell(new Point(random.nextDouble(), random.nextDouble()));
+            cells.add(cell);
+            tree.add(cell);
+        }
+
+        for(int i = 0; i < 100; i++) {
+            final Point point = new Point(random.nextDouble(), random.nextDouble());
+
+            final Cell closest = tree.getClosest(point);
+            final double cdx = closest.center.x - point.x;
+            final double cdy = closest.center.y - point.y;
+            final double cdist2 = cdx * cdx + cdy * cdy;
+
+            for(Cell cell : cells) {
+                final double dx = cell.center.x - point.x;
+                final double dy = cell.center.y - point.y;
+                final double dist2 = dx * dx + dy * dy;
+
+                if(dist2 < cdist2) {
+                    Log.log("KdTree failed: " + point + " " + closest.center + " " + cell.center);
+                }
+            }
+        }
+    }
+
     public void add(Cell cell) {
         cells.add(cell);
 
@@ -33,23 +64,44 @@ public class KdTree {
             return null;
         }
 
-        Node node = root;
-        Cell best = node.cell;
-        int d = 1;
+        Cell closest = cells.get(0);
+        double cdx = closest.center.x - point.x;
+        double cdy = closest.center.y - point.y;
+        double cdist2 = cdx * cdx + cdy * cdy;
 
-        while(node != null) {
-            if(closer(point, node.cell.center, best.center)) {
-                best = node.cell;
+        for(Cell cell : cells) {
+            final double dx = cell.center.x - point.x;
+            final double dy = cell.center.y - point.y;
+            final double dist2 = dx * dx + dy * dy;
+
+            if(dist2 < cdist2) {
+                closest = cell;
+                cdx = dx;
+                cdy = dy;
+                cdist2 = dist2;
             }
-
-            final int c = (point.get(d) < node.split) ? 0 : 1;
-
-            node = node.children[c];
-
-            d = (d + 1) % 2;
         }
 
-        return best;
+        return closest;
+
+
+        // Node node = root;
+        // Node best = node;
+        // int d = 1;
+
+        // while(node != null) {
+        //     if(closer(point, node.cell.center, best.cell.center)) {
+        //         best = node;
+        //     }
+
+        //     final int c = (point.get(d) < node.split) ? 0 : 1;
+
+        //     node = node.children[c];
+
+        //     d = (d + 1) % 2;
+        // }
+
+        // return best.cell;
     }
 
     private boolean closer(Point point, Point a, Point b) {
