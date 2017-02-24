@@ -26,9 +26,7 @@ public class Main {
 
         final List<Point> points = new ArrayList<>();
 
-        // final long seed = System.currentTimeMillis();
-        // final long seed = 1487917575514L; // Messy
-        final long seed = 1487685327795L; // Mostly good.
+        final long seed = System.currentTimeMillis();
         Log.log("seed: " + seed);
 
         final Random random = new Random(seed);
