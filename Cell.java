@@ -22,75 +22,159 @@ public class Cell {
         edges.add(new Edge(r, b, l, b, this, null));
     }
 
-    public Cell split(Point point) {
-        final Cell cell = new Cell(point);
+    public boolean split(Cell child) {
+        Log.debug("split");
         final Iterator<Edge> iterator = edges.iterator();
-        final Point[] intersections = new Point[2];
-        int ins = 0;
+        final Ray ray = new Ray(center, child.center);
+        final List<Point> intersections = new ArrayList<>();
 
         while(iterator.hasNext()) {
             final Edge edge = iterator.next();
 
-            final Ray ray = new Ray(center, point);
+            final int sideOfParent = ray.side(center);
+            final int sideOfChild = -sideOfParent;
+            final int sideOfEdgeEndA = ray.side(edge.ends[0], edge.ends[1]);
+            final int sideOfEdgeEndB = ray.side(edge.ends[2], edge.ends[3]);
 
-            final boolean s1 = ray.sameSide(center.x, center.y, edge.ends[0], edge.ends[1]);
-            final boolean s2 = ray.sameSide(center.x, center.y, edge.ends[2], edge.ends[3]);
+            final boolean edgeCrossesRay = ((sideOfEdgeEndA + sideOfEdgeEndB) == 0) && (sideOfEdgeEndA != 0);
+            final boolean edgeTouchesRayOnChildSide = (sideOfEdgeEndA + sideOfEdgeEndB) == sideOfChild;
+            final boolean edgeTouchesRayOnParentSide = (sideOfEdgeEndA + sideOfEdgeEndB) == sideOfParent;
+            final boolean edgeOnChildSide = (sideOfEdgeEndA == sideOfEdgeEndB) && (sideOfEdgeEndB == sideOfChild);
+            final boolean edgeOnParentSide = (sideOfEdgeEndA == sideOfEdgeEndB) && (sideOfEdgeEndB == sideOfParent);
 
-            if(!s1 && !s2) {
-                iterator.remove();
-
-                cell.edges.add(edge);
-
-                if(edge.cells[0] == this) {
-                    edge.cells[0] = cell;
-                } else {
-                    edge.cells[1] = cell;
-                }
-            } else if(!s1 || !s2) {
+            if(edgeCrossesRay) {
+                Log.debug("edgeCrossesRay");
                 final Point intersection = ray.intersection(new Ray(edge.ends));
-                intersections[ins] = intersection;
-                ins++;
-
-                final int e1 = s1 ? 2 : 0;
-                final int e2 = s2 ? 1 : 3;
-
+                final Cell neighbour = (edge.cells[0] == this) ? edge.cells[1] : edge.cells[0];
+                final int e1 = (sideOfEdgeEndA == sideOfChild) ? 0 : 2;
+                final int e2 = (sideOfEdgeEndA == sideOfChild) ? 1 : 3;
                 final double tx = edge.ends[e1];
                 final double ty = edge.ends[e2];
 
                 edge.ends[e1] = intersection.x;
                 edge.ends[e2] = intersection.y;
 
-                final Cell neighbour = (edge.cells[0] == this) ? edge.cells[1] : edge.cells[0];
+                intersections.add(intersection);
 
                 if(neighbour == null) {
-                    final Edge newEdge = new Edge(intersection.x, intersection.y, tx, ty, cell, neighbour);
-                    cell.edges.add(newEdge);
+                    final Edge e = new Edge(tx, ty, intersection.x, intersection.y, child, null);
+                    child.edges.add(e);
+                }
+            } else if(edgeOnChildSide || edgeTouchesRayOnChildSide) {
+                Log.debug("edgeOnChildSide || edgeTouchesRayOnChildSide");
+                final Cell neighbour = (edge.cells[0] == this) ? edge.cells[1] : edge.cells[0];
+
+                iterator.remove();
+
+                if(neighbour != null) {
+                    neighbour.edges.remove(edge);
                 } else {
-                    System.out.println("TODO: handle neighbours");
-                    // TODO
-                    // neighbour.split(cell);
+                    child.edges.add(edge);
+                    edge.cells[0] = child;
+                    edge.cells[1] = null;
+                }
+            } else if(edgeOnParentSide) {
+                Log.debug("edgeOnParentSide");
+                // Ignore.
+            } else if(edgeTouchesRayOnParentSide) {
+                Log.debug("edgeTouchesRayOnParentSide");
+                final Point intersection = ray.intersection(new Ray(edge.ends));
+                intersections.add(intersection);
+            }
+        }
+
+        if(intersections.size() == 2) {
+            final Point i1 = intersections.get(0);
+            final Point i2 = intersections.get(1);
+            final Edge e = new Edge(i1.x, i1.y, i2.x, i2.y, this, child);
+
+            edges.add(e);
+            child.edges.add(e);
+
+        } else {
+            Log.error("Found " + intersections.size() + " intersections while spliting");
+
+            return false;
+        }
+
+        return true;
+    }
+
+    public List<Cell> getNeighbours(Cell child) {
+        Log.debug("getNeighbours(Cell)");
+        final List<Cell> neighbours = new ArrayList<>();
+
+        final Ray ray = new Ray(child.center, center);
+
+        final int sideOfParent = ray.side(center);
+        final int sideOfChild = -sideOfParent;
+
+        Log.debug("edge count: " + edges.size());
+
+        for(Edge edge : edges) {
+            Log.debug("edge: " + edge);
+            final int sideOfEdgeEndA = ray.side(edge.ends[0], edge.ends[1]);
+            final int sideOfEdgeEndB = ray.side(edge.ends[2], edge.ends[3]);
+
+            final boolean edgeCrossesRay = ((sideOfEdgeEndA + sideOfEdgeEndB) == 0) && (sideOfEdgeEndA != 0);
+            final boolean edgeTouchesRayOnChildSide = (sideOfEdgeEndA + sideOfEdgeEndB) == sideOfChild;
+
+            if(edgeCrossesRay || edgeTouchesRayOnChildSide) {
+                Log.debug("edgeCrossesRay || edgeTouchesRayOnChildSide");
+                final Cell neighbour = (edge.cells[0] == this) ? edge.cells[1] : edge.cells[0];
+
+                if(neighbour != null) {
+                    neighbours.add(neighbour);
                 }
             }
         }
 
-        final double x1 = intersections[0].x;
-        final double y1 = intersections[0].y;
-        final double x2 = intersections[1].x;
-        final double y2 = intersections[1].y;
+        neighbours.add(this);
 
-        final Edge newEdge = new Edge(x1, y1, x2, y2, cell, this);
+        final int length = neighbours.size();
+        Log.debug("neighbour count: " + length);
 
-        edges.add(newEdge);
-        cell.edges.add(newEdge);
+        // +1 for self
+        if(length > 3) {
+            throw new RuntimeException("Found more than 2 neighbours");
+        }
 
-        return cell;
+        for(int i = 0; i < length; i++) {
+            final Cell neighbour = neighbours.get(i);
+
+            if(neighbour != this) {
+                neighbour.getNeighbours(child, neighbours);
+            }
+        }
+
+        return neighbours;
     }
 
-    // private void split(Cell cell) {
-    //     final Ray ray = new Ray(cell.center, center);
+    private void getNeighbours(Cell child, List<Cell> neighbours) {
+        Log.debug("getNeighbours(Cell, List<Cell>)");
+        final Ray ray = new Ray(child.center, center);
 
-    //     for(Edge edge : edges) {
-    //         final Point intersection = ray.intersection(new Ray(edge.ends));
-    //     }
-    // }
+        final int sideOfParent = ray.side(center);
+        final int sideOfChild = -sideOfParent;
+
+        for(Edge edge : edges) {
+            Log.debug("edge: " + edge);
+            final int sideOfEdgeEndA = ray.side(edge.ends[0], edge.ends[1]);
+            final int sideOfEdgeEndB = ray.side(edge.ends[2], edge.ends[3]);
+
+            final boolean edgeCrossesRay = ((sideOfEdgeEndA + sideOfEdgeEndB) == 0) && (sideOfEdgeEndA != 0);
+            final boolean edgeTouchesRayOnChildSide = (sideOfEdgeEndA + sideOfEdgeEndB) == sideOfChild;
+
+            if(edgeCrossesRay || edgeTouchesRayOnChildSide) {
+                Log.debug("edgeCrossesRay || edgeTouchesRayOnChildSide");
+                final Cell neighbour = (edge.cells[0] == this) ? edge.cells[1] : edge.cells[0];
+
+                if((neighbour != null) && !neighbours.contains(neighbour)) {
+                    neighbours.add(neighbour);
+                    neighbour.getNeighbours(child, neighbours);
+                    break;
+                }
+            }
+        }
+    }
 }

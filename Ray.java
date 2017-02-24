@@ -32,11 +32,19 @@ public class Ray {
         b = new Point(ends[2], ends[3]);
     }
 
-    public boolean sameSide(double x1, double y1, double x2, double y2) {
-        final double v1 = (b.x - a.x) * (y1 - a.y) - (x1 - a.x) * (b.y - a.y);
-        final double v2 = (b.x - a.x) * (y2 - a.y) - (x2 - a.x) * (b.y - a.y);
+    public int side(Point p) {
+        return side(p.x, p.y);
+    }
 
-        return (v1 < 0) == (v2 < 0);
+    public int side(double x, double y) {
+        final double s = (b.x - a.x) * (y - a.y) - (x - a.x) * (b.y - a.y);
+        final double t = 0.0001; // Threshold for line intersection.
+
+        if(s <= t && s >= -t) {
+            return 0;
+        } else {
+            return (int)Math.signum(s);
+        }
     }
 
     public Point intersection(Ray other) {

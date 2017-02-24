@@ -10,4 +10,9 @@ public class Edge {
         cells[0] = a;
         cells[1] = b;
     }
+
+    @Override
+    public String toString() {
+        return "Edge (" + ends[0] + ", " + ends[1] + ") (" + ends[2] + ", " + ends[3] + ") " + cells[0] + " " + cells[1];
+    }
 }
