@@ -11,6 +11,7 @@ import java.util.*;
 public class Main {
     private JFrame mainMap;
     private final boolean fill = true;
+    private final boolean drawPoints = false;
     private final int width = 600;
     private final int height = 600;
     private final double border = 10;
@@ -68,6 +69,13 @@ public class Main {
                         g.fillPolygon(polygon);
                     } else {
                         g.drawPolygon(polygon);
+                    }
+                }
+
+                if(drawPoints) {
+                    for(Cell cell : cells) {
+                        g.setColor(Color.WHITE);
+                        g.fillOval((int)cell.center.x - 3, (int)cell.center.y - 3, 6, 6);
                     }
                 }
             }
